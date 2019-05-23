@@ -6,13 +6,13 @@ local LQT = LibStub("LibQTip-1.0")
 
 FriendXP.LSM = LSM
 
-LSM:Register("background", "Wireless Icon", "Interface\\Addons\\FriendXP\\Artwork\\wlan_wizard.tga")
-LSM:Register("background", "Wireless Icon2", "Interface\\Addons\\FriendXP\\Artwork\\wlan_wizard2.tga")
-LSM:Register("background", "Wireless Incoming", "Interface\\Addons\\FriendXP\\Artwork\\wlan_incoming.tga")
-LSM:Register("background", "PartyXPBar", "Interface\\Addons\\FriendXP\\Artwork\\partyxpbar.tga")
-LSM:Register("border", "Thin Square 1px", "Interface\\Addons\\FriendXP\\Artwork\\Square 1px.tga")
-LSM:Register("border", "Thin Square 2px", "Interface\\Addons\\FriendXP\\Artwork\\Square 2px.tga")
-LSM:Register("background", "CircleXP", "Interface\\Addons\\FriendXP\\Artwork\\circlexp.tga")
+LSM:Register("background", "Wireless Icon", "Interface\\Addons\\FriendXP-Classic\\Artwork\\wlan_wizard.tga")
+LSM:Register("background", "Wireless Icon2", "Interface\\Addons\\FriendXP-Classic\\Artwork\\wlan_wizard2.tga")
+LSM:Register("background", "Wireless Incoming", "Interface\\Addons\\FriendXP-Classic\\Artwork\\wlan_incoming.tga")
+LSM:Register("background", "PartyXPBar", "Interface\\Addons\\FriendXP-Classic\\Artwork\\partyxpbar.tga")
+LSM:Register("border", "Thin Square 1px", "Interface\\Addons\\FriendXP-Classic\\Artwork\\Square 1px.tga")
+LSM:Register("border", "Thin Square 2px", "Interface\\Addons\\FriendXP-Classic\\Artwork\\Square 2px.tga")
+LSM:Register("background", "CircleXP", "Interface\\Addons\\FriendXP-Classic\\Artwork\\circlexp.tga")
 
 local friends = { }; -- Needs renaming
 local fonts = { };
