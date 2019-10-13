@@ -1,8 +1,13 @@
+-- TODO Clean this up, especially the settings
+-- Not everything is localized
+
 FriendXP = LibStub("AceAddon-3.0"):NewAddon("FriendXP", "AceBucket-3.0", "AceConsole-3.0", "AceEvent-3.0","AceComm-3.0", "AceSerializer-3.0", "AceTimer-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale("FriendXP")
 local LSM = LibStub("LibSharedMedia-3.0")
 local LQT = LibStub("LibQTip-1.0")
+
+local WoWClassic = select(4, GetBuildInfo()) < 20000 -- Addon runs on both clients as-is, this is to hide the XPDisabled stuff on classic
 
 FriendXP.LSM = LSM
 
@@ -25,7 +30,6 @@ local xpbar = nil;
 
 local configGenerated = false;
 local activeFriend = "";
-
 -- local whatevers
 local gsub = string.gsub
 
@@ -33,7 +37,7 @@ local gsub = string.gsub
 FriendXP.LDB = LibStub:GetLibrary("LibDataBroker-1.1"):NewDataObject("FriendXP", {
  type = "launcher",
  label = "FriendXP",
- icon = "Interface\\ICONS\\Achievement_DoubleRainbow.blp",
+ icon = "Interface\\ICONS\\INV_Misc_Gem_Variety_02.blp",
  OnClick = function(clickedFrame, button)
   if (button == "LeftButton") then
    FriendXP:SendXP()
@@ -121,6 +125,13 @@ local function giveOptions(self)
    set = function(i, v) self.db.profile.miniframe.threshold = v end,
    get = function(i) return self.db.profile.miniframe.threshold end,
   },
+  grid2 = {
+	name = "Grid2",
+	desc = L["Adds an xp percentage status to Grid2"],
+	type = "toggle",
+	set = function(i, v) self.db.profile.grid2 = v self:SetupGrid2() end,
+	get = function(i) return self.db.profile.grid2 end,
+  },
   sendoptions = {
    name = L["Broadcast To"],
    order = 0.9,
@@ -157,7 +168,7 @@ local function giveOptions(self)
    },
   },
   friendbar = {
-   name = "FriendBar",
+   name = L["FriendBar"],
    order = 1,
    type = "group",
    args = {
@@ -168,6 +179,16 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.friendbar.enabled = v; self:ToggleFriendbar() end,
      get = function(i) return self.db.profile.friendbar.enabled end,
     },
+    personal = {
+     name = L["Use as personal xp bar"],
+	 desc = L["Will always show your experience"],
+	 width = "full",
+	 descStyle = "inline",
+     order = 1.01,
+     type = "toggle",
+     set = function(i, v) self.db.profile.friendbar.personal = v end,
+     get = function(i) return self.db.profile.friendbar.personal end,
+    },
     fontheader = {
      name = L["Font"],
      order = 3,
@@ -175,7 +196,6 @@ local function giveOptions(self)
     },
     face = {
      name = L["FontFace"],
-     desc = "Fontface",
      order = 3.1,
      type = "select",
      values = LSM:HashTable("font"),
@@ -188,13 +208,12 @@ local function giveOptions(self)
      order = 3.2,
      type = "select",
      style = "dropdown",
-     values = { [""] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick Outline", ["MONOCHROME"] = "Monochrome", },
+     values = { [""] = L["None"], ["OUTLINE"] = L["Outline"], ["THICKOUTLINE"] = L["Thick Outline"], ["MONOCHROME"] = L["Monochrome"], },
      set = function(i, v) self.db.profile.friendbar.text.style = v; self:UpdateSettings() end,
      get = function(i) return self.db.profile.friendbar.text.style end,
     },
     size = {
      name = L["FontSize"],
-     desc = "Size of the text",
      order = 3.3,
      type = "range",
      min = 1, max = 40, step = 1,
@@ -210,7 +229,7 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.friendbar.text.color.r = r; self.db.profile.friendbar.text.color.g = g; self.db.profile.friendbar.text.color.b = b; self.db.profile.friendbar.text.color.a = a; self:UpdateSettings() end,
     },
     formatstring = {
-     name = "Format String",
+     name = L["Format String"],
      order = 3.5,
      type = "input",
      width = "double",
@@ -222,9 +241,16 @@ local function giveOptions(self)
      order = 2,
      type = "header",
     },
+	tile = {
+		name = L["Tile"],
+		desc = L["Tile the bar texture"],
+		order = 2.15,
+		type = "toggle",
+		get = function(i) return self.db.profile.friendbar.tile end,
+		set = function(i, v) self.db.profile.friendbar.tile = v self:UpdateSettings() end,
+	},
     texture = {
-     name = "Bar Texture",
-     desc = "Texture of the power bar",
+     name = L["Bar Texture"],
      order = 2.1,
      type = "select",
      values = LSM:HashTable("statusbar"),
@@ -233,8 +259,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.friendbar.texture = value; self:UpdateSettings() end,
     },
     color = {
-     name = "Experience bar color",
-     desc = "Color of the experience bar",
+     name = L["Experience bar color"],
      order = 2.2,
      type = "color",
      hasAlpha = false,
@@ -242,8 +267,7 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.friendbar.color.r = r; self.db.profile.friendbar.color.g = g; self.db.profile.friendbar.color.b = b; self.db.profile.friendbar.color.a = a; self:UpdateSettings() end,
     },
     bgcolor = {
-     name = "Experience bar background color",
-     desc = "Color of the background bar",
+     name = L["Experience bar background color"],
      order = 2.3,
      type = "color",
      hasAlpha = true,
@@ -251,8 +275,7 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.friendbar.bgcolor.r = r; self.db.profile.friendbar.bgcolor.g = g; self.db.profile.friendbar.bgcolor.b = b; self.db.profile.friendbar.bgcolor.a = a; self:UpdateSettings() end,
     },
     restcolor = {
-     name = "Rest bar color",
-     desc = "Color of the rest bonus bar",
+     name = L["Rest bar color"],
      order = 2.4,
      type = "color",
      hasAlpha = false,
@@ -261,13 +284,12 @@ local function giveOptions(self)
     },
     locationheader = {
      name = L["Size and Position"],
-     order = 1,
+     order = 1.05,
      type = "header",
     },
     width = {
      name = L["Width"],
      order = 1.1,
-     desc = "Width of the total xp bar",
      type = "range",
      min = 0.01, max = 1, step = 0.01,
      get = function(info) return self.db.profile.friendbar.width end,
@@ -276,15 +298,13 @@ local function giveOptions(self)
     height = {
      name = L["Height"],
      order = 1.2,
-     desc = "Height of the total xp bar",
      type = "range",
      min = 0.01, max = 60, step = 0.01,
      get = function(info) return self.db.profile.friendbar.height end,
      set = function(info,value) self.db.profile.friendbar.height = tonumber(value); self:UpdateSettings() end,
     },
     posx = {
-     name = "X",
-     desc = "Position along the x axis",
+     name = L["Horizontal Position"],
      order = 1.3,
      type = "range",
      min = 0, max = maxwidth, step = 1,
@@ -292,8 +312,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.friendbar.x = tonumber(value); self:UpdateSettings() end,
     },
     posy = {
-     name = "Y",
-     desc = "Position along the y axis",
+     name = L["Vertical Position"],
      order = 1.4,
      type = "range",
      min = -maxheight, max = 0, step = 1,
@@ -310,7 +329,7 @@ local function giveOptions(self)
      order = 4.1,
      type = "select",
      style = "dropdown",
-     values = { ["BACKGROUND"] = "Background", ["LOW"] = "Low", ["MEDIUM"] = "Medium", ["HIGH"] = "High", ["DIALOG"] = "Dialog" },
+     values = { ["BACKGROUND"] = L["Background"], ["LOW"] = L["Low"], ["MEDIUM"] = L["Medium"], ["HIGH"] = L["High"], ["DIALOG"] = L["Dialog"] },
      set = function(i, v) self.db.profile.friendbar.framestrata = v; self:UpdateSettings() end,
      get = function(i) return self.db.profile.friendbar.framestrata end,
     },
@@ -336,8 +355,7 @@ local function giveOptions(self)
      type = "header",
     },
     face = {
-     name = "Header Font Face",
-     desc = "Font face",
+     name = L["Font Face"],
      order = 1.1,
      type = "select",
      values = LSM:HashTable("font"),
@@ -346,8 +364,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.tooltip.header.font = value; self:UpdateFonts("header", self.db.profile.tooltip.header.size, self.db.profile.tooltip.header.color.r, self.db.profile.tooltip.header.color.g, self.db.profile.tooltip.header.color.g); end,
     },
     headersize = {
-     name = "Header Size",
-     desc = "Header Size",
+     name = L["Font Size"],
      order = 1.2,
      type = "range",
      min = 8, max = 24, step = 1,
@@ -355,7 +372,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.tooltip.header.size = value; self:UpdateFonts("header", self.db.profile.tooltip.header.size, self.db.profile.tooltip.header.color.r, self.db.profile.tooltip.header.color.g, self.db.profile.tooltip.header.color.b); end,
     },
     headercolor = {
-     name = "Header Color",
+     name = L["Font Color"],
      order = 1.3,
      type = "color",
      hasAlpha = false,
@@ -368,8 +385,7 @@ local function giveOptions(self)
      type = "header",
     },
     normalface = {
-     name = "Normal Font face",
-     desc = "Normal tooltip font face",
+     name = L["Font Face"],
      order = 2.1,
      type = "select",
      values = LSM:HashTable("font"),
@@ -378,8 +394,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.tooltip.normal.font = value; self:UpdateFonts("normal", self.db.profile.tooltip.normal.size, self.db.profile.tooltip.normal.color.r, self.db.profile.tooltip.normal.color.g, self.db.profile.tooltip.normal.color.g); end,
     },
     normalsize = {
-     name = "Normal Size",
-     desc = "Normal Size",
+     name = L["Font Size"],
      order = 2.2,
      type = "range",
      min = 8, max = 24, step = 1,
@@ -387,7 +402,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.tooltip.normal.size = value; self:UpdateFonts("normal", self.db.profile.tooltip.normal.size, self.db.profile.tooltip.normal.color.r, self.db.profile.tooltip.normal.color.g, self.db.profile.tooltip.normal.color.g); end,
     },
     normalcolor = {
-     name = "Normal Color",
+     name = L["Font Color"],
      type = "color",
      order = 2.3,
      hasAlpha = false,
@@ -397,19 +412,20 @@ local function giveOptions(self)
    },
   },
   miniframe = { -- Miniframe BEGIN
-   name = "Miniframe",
+   name = L["Miniframe"],
    type = "group",
    order = 2,
    args = {
     enabled = {
-     name = "Enable Miniframe",
+     name = L["Enable Miniframe"],
      order = 1,
      type = "toggle",
      set = function(i, v) self.db.profile.miniframe.enabled = v; self:SetupMiniframe() self:UpdateMiniframe() end,
      get = function(i) return self.db.profile.miniframe.enabled end,
     },
 	ignoremaxlevel = {
-	 name = "Ignore Max Level",
+	 name = L["Ignore Max Level"],
+	 desc = L["Will not show max level players"],
 	 order = 1.1,
 	 type = "toggle",
 	 set = function(i, v) self.db.profile.miniframe.ignoremaxlevel = v; self:RecycleAllFrames() self:UpdateMiniframe() end,
@@ -421,8 +437,8 @@ local function giveOptions(self)
      type = "header",
     },
     friendlimit = {
-     name = "Friend Limit",
-     desc = "Maximun number of friends to show",
+     name = L["Friend Limit"],
+     desc = L["Maximun number of friends to show"],
      width = "half",
      order = 2.1,
      type = "input",
@@ -430,8 +446,8 @@ local function giveOptions(self)
      set = function(i, v) v = tonumber(v); if (v < 1) then v = 1 end self.db.profile.miniframe.friendlimit = tonumber(v); self:RecycleAllFrames() self:UpdateMiniframe() end,
     },
     columnlimit = {
-     name = "Column Limit",
-     desc = "Number of friends to show per column",
+     name = L["Column Limit"],
+     desc = L["Number of friends to show per column"],
      width = "half",
      order = 2.2,
      type = "input",
@@ -444,8 +460,7 @@ local function giveOptions(self)
      type = "header",
     },
     posx = {
-     name = "X",
-     desc = "Position along the x axis",
+     name = L["Vertical Position"],
      order = 3.1,
      type = "range",
      min = 0, max = maxwidth, step = 1,
@@ -453,8 +468,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.x = tonumber(value); self:SetupMiniframe() end,
     },
     posy = {
-     name = "Y",
-     desc = "Position along the y axis",
+     name = L["Horizontal Position"],
      order = 3.2,
      type = "range",
      min = -maxheight, max = 0, step = 1,
@@ -467,7 +481,7 @@ local function giveOptions(self)
      type = "header",
     },
     border = {
-     name = "Miniframe Border",
+     name = L["Miniframe Border"],
      order = 4.1,
      type = "select",
      values = LSM:HashTable("border"),
@@ -475,8 +489,17 @@ local function giveOptions(self)
      get = function(info) return self.db.profile.miniframe.border.border end,
      set = function(info, value) self.db.profile.miniframe.border.border = value; self:SetupMiniframe() end,
     },
+	 background = {
+     name = L["Miniframe Background"],
+     order = 4.14,
+     type = "select",
+     values = LSM:HashTable("background"),
+     dialogControl = "LSM30_Background",
+     get = function(info) return self.db.profile.miniframe.texture end,
+     set = function(info, value) self.db.profile.miniframe.texture = value; self:SetupMiniframe() end,
+    },
     bordercolor = {
-     name = "Miniframe Border Color",
+     name = L["Miniframe Border Color"],
      order = 4.2,
      type = "color",
      hasAlpha = true,
@@ -484,7 +507,7 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.miniframe.border.color.r = r; self.db.profile.miniframe.border.color.g = g; self.db.profile.miniframe.border.color.b = b; self.db.profile.miniframe.border.color.a = a; self:SetupMiniframe(); end,
     },
     bordersize = {
-     name = "Border size",
+     name = L["Border Size"],
      order = 4.3,
      type = "range",
      min = 1, max = 64, step = 1,
@@ -492,7 +515,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.border.bordersize = v; self:SetupMiniframe() end,
     },
     insetleft = {
-     name = "Left Inset",
+     name = L["Left Inset"],
      order = 4.6,
      width = "half",
      type = "input",
@@ -500,7 +523,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.border.inset.left = tonumber(v); self:SetupMiniframe() end,
     },
     insetright = {
-     name = "Right Inset",
+     name = L["Right Inset"],
      order = 4.7,
      width = "half",
      type = "input",
@@ -508,7 +531,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.border.inset.right = tonumber(v); self:SetupMiniframe() end,
     },
     insettop = {
-     name = "Top Inset",
+     name = L["Top Inset"],
      order = 4.8,
      width = "half",
      type = "input",
@@ -516,24 +539,15 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.border.inset.top = tonumber(v); self:SetupMiniframe() end,
     },
     insetbottom = {
-     name = "Bottom Inset",
+     name = L["Bottom Inset"],
      order = 4.9,
      width = "half",
      type = "input",
      get = function(i) return tostring(self.db.profile.miniframe.border.inset.bottom) end,
      set = function(i, v) self.db.profile.miniframe.border.inset.bottom = tonumber(v); self:SetupMiniframe() end,
     },
-    background = {
-     name = "Miniframe background",
-     order = 4.4,
-     type = "select",
-     values = LSM:HashTable("background"),
-     dialogControl = "LSM30_Background",
-     get = function(info) return self.db.profile.miniframe.texture end,
-     set = function(info, value) self.db.profile.miniframe.texture = value; self:SetupMiniframe() end,
-    },
     bgcolor = {
-     name = "Miniframe background color",
+     name = L["Miniframe Background Color"],
      order = 4.5,
      type = "color",
      hasAlpha = true,
@@ -541,12 +555,12 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.miniframe.bgcolor.r = r; self.db.profile.miniframe.bgcolor.g = g; self.db.profile.miniframe.bgcolor.b = b; self.db.profile.miniframe.bgcolor.a = a; self:SetupMiniframe() end,
     },
     xpbarheader = {
-     name = "Mini XP Bar",
+     name = L["Mini XP Bar"],
      order = 5,
      type = "header",
     },
     xpbarX = {
-     name = "XP Bar Offset X",
+     name = L["XP Bar Offset X"],
      order = 5.1,
      type = "range",
      min = 0, max = maxwidth, step = 1,
@@ -554,7 +568,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.xp.offsetx = tonumber(value); self:UpdateMiniframe() end,
     },
     xpbarY = {
-     name = "XP Bar Offset Y",
+     name = L["XP Bar Offset Y"],
      order = 5.2,
      type = "range",
      min = 0, max = maxheight, step = 1,
@@ -562,7 +576,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.xp.offsety = tonumber(value); self:UpdateMiniframe() end,
     },
     xpbarWidth = {
-     name = "XP Bar Width",
+     name = L["XP Bar Width"],
      order = 5.3,
      type = "range",
      min = 0, max = maxwidth, step = 1,
@@ -570,7 +584,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.xp.width = tonumber(value); self:SetupMiniframe(); self:UpdateMiniframe() end,
     },
     xpbarHeight = {
-     name = "XP Bar Height",
+     name = L["XP Bar Height"],
      order = 5.4,
      type = "range",
      min = 0, max = maxheight, step = 1,
@@ -578,7 +592,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.xp.height = tonumber(value); self:SetupMiniframe(); self:UpdateMiniframe() end,
     },
     xpbartexture = {
-     name = "XP Bar Texture",
+     name = L["XP Bar Texture"],
      order = 5.5,
      type = "select",
      values = LSM:HashTable("statusbar"),
@@ -587,7 +601,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.xp.texture = value; self:UpdateMiniframe() end,
     },
     xpbarbgcolor = {
-     name = "XP Bar Background Color",
+     name = L["XP Bar Background Color"],
      order = 5.6,
      type = "color",
      hasAlpha = true,
@@ -595,15 +609,15 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.miniframe.xp.bgcolor.r = r; self.db.profile.miniframe.xp.bgcolor.g = g; self.db.profile.miniframe.xp.bgcolor.b = b; self.db.profile.miniframe.xp.bgcolor.a = a; self:UpdateMiniframe() end,
     },
     xpbarrestenabled = {
-     name = "XP Bar Restbonus Enabled",
+     name = L["XP Bar Restbonus Enabled"],
      order = 5.7,
      type = "toggle",
      get = function(i) return self.db.profile.miniframe.rest.enabled end,
      set = function(i, v) self.db.profile.miniframe.rest.enabled = v; self:UpdateMiniframe() end
     },
 	namelength = {
-     name = "Name Length",
-     desc = "Name will be truncated to this length, 0 to disable",
+     name = L["Name Length"],
+     desc = L["Name will be truncated to this length, 0 to disable"],
      order = 5.8,
      type = "range",
      min = 0, max = 20, step = 1,
@@ -644,7 +658,6 @@ local function giveOptions(self)
 	},
     face = {
      name = L["Font Face"],
-     desc = "Fontface",
      order = 5.910,
      type = "select",
      values = LSM:HashTable("font"),
@@ -663,7 +676,6 @@ local function giveOptions(self)
     },
     size = {
      name = L["Font Size"],
-     desc = "Size of the text",
      order = 5.912,
      type = "range",
      min = 1, max = 40, step = 1,
@@ -680,7 +692,7 @@ local function giveOptions(self)
     },
     formatstring = {
      name = L["Format String"],
-     desc = "Changes the way information is displayed on the mini xp bars, default is %l: %n",
+     desc = L["Changes the text that is displayed"],
      order = 5.914,
      type = "input",
      width = "double",
@@ -688,7 +700,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.formatstring = v; self:UpdateMiniframe() end,
     },
     flashoutgoingheader = {
-     name = "Comm - Outgoing Indicator",
+     name = L["Comm - Outgoing Indicator"],
      order = 6,
      type = "header",
     },
@@ -700,7 +712,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.outgoing.enabled = v end,
     },
     flash = {
-     name = "Texture",
+     name = L["Texture"],
      order = 6.2,
      type = "select",
      values = LSM:HashTable("background"),
@@ -709,26 +721,25 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.outgoing.texture = value; self:SetupMiniframe() end,
     },
     opoint = {
-     name = "Point",
+     name = L["Point"],
      order = 6.3,
      type = "select",
      style = "dropdown",
-     values = { ["TOP"] = "Top", ["RIGHT"] = "Right", ["BOTTOM"] = "Bottom", ["LEFT"] = "Left", ["CENTER"] = "Center", ["TOPRIGHT"] = "Top-Right", ["TOPLEFT"] = "Top-Left", ["BOTTOMRIGHT"] = "Bottom-Right", ["BOTTOMLEFT"] = "Bottom-Left" },
+     values = { ["TOP"] = L["Top"], ["RIGHT"] = L["Right"], ["BOTTOM"] = L["Bottom"], ["LEFT"] = L["Left"], ["CENTER"] = L["Center"], ["TOPRIGHT"] = L["Top-Right"], ["TOPLEFT"] = L["Top-Left"], ["BOTTOMRIGHT"] = L["Bottom-Right"], ["BOTTOMLEFT"] = L["Bottom-Left"] },
      get = function(i) return self.db.profile.miniframe.outgoing.point end,
      set = function(i, v) self.db.profile.miniframe.outgoing.point = v; self:SetupMiniframe() end,
     },
     orelativepoint = {
-     name = "Relative Point",
+     name = L["Relative Point"],
      order = 6.4,
      type = "select",
      style = "dropdown",
-     values = { ["TOP"] = "Top", ["RIGHT"] = "Right", ["BOTTOM"] = "Bottom", ["LEFT"] = "Left", ["CENTER"] = "Center", ["TOPRIGHT"] = "Top-Right", ["TOPLEFT"] = "Top-Left", ["BOTTOMRIGHT"] = "Bottom-Right", ["BOTTOMLEFT"] = "Bottom-Left" },
+     values = { ["TOP"] = L["Top"], ["RIGHT"] = L["Right"], ["BOTTOM"] = L["Bottom"], ["LEFT"] = L["Left"], ["CENTER"] = L["Center"], ["TOPRIGHT"] = L["Top-Right"], ["TOPLEFT"] = L["Top-Left"], ["BOTTOMRIGHT"] = L["Bottom-Right"], ["BOTTOMLEFT"] = L["Bottom-Left"] },
      get = function(i) return self.db.profile.miniframe.outgoing.relativePoint end,
      set = function(i, v) self.db.profile.miniframe.outgoing.relativePoint = v; self:SetupMiniframe() end,
     },
     flashposx = {
-     name = "X Position",
-     desc = "Position along the x axis",
+     name = L["Vertical Position"],
      order = 6.5,
      type = "range",
      min = -600, max = 600, step = 1,
@@ -736,8 +747,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.outgoing.x = value; self:SetupMiniframe() end,
     },
     flashposy = {
-     name = "Y Position",
-     desc = "Position along the y axis",
+     name = L["Horizontal Position"],
      order = 6.6,
      type = "range",
      min = -600, max = 600, step = 1,
@@ -745,7 +755,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.outgoing.y = value; self:SetupMiniframe() end,
     },
     flashheight = {
-     name = "Height",
+     name = L["Height"],
      order = 6.7,
      type = "range",
      min = 8, max = 100, step = 1,
@@ -753,7 +763,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.outgoing.height = tonumber(value); self:SetupMiniframe() end,
     },
     flashwidth = {
-     name = "Width",
+     name = L["Width"],
      order = 6.8,
      type = "range",
      min = 8, max = 100, step = 1,
@@ -761,7 +771,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.outgoing.width = tonumber(value); self:SetupMiniframe() end,
     },
     flashincomingheader = {
-     name = "Comm - Incoming Indicator",
+     name = L["Comm - Incoming Indicator"],
      order = 7,
      type = "header",
     },
@@ -773,7 +783,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.miniframe.incoming.enabled = v end,
     },
     iflash = {
-     name = "Texture",
+     name = L["Texture"],
      order = 7.2,
      type = "select",
      values = LSM:HashTable("background"),
@@ -782,26 +792,25 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.incoming.texture = value; self:SetupMiniframe() end,
     },
     ipoint = {
-      name = "Point",
+      name = L["Point"],
       order = 7.3,
       type = "select",
       style = "dropdown",
-      values = { ["TOP"] = "Top", ["RIGHT"] = "Right", ["BOTTOM"] = "Bottom", ["LEFT"] = "Left", ["CENTER"] = "Center", ["TOPRIGHT"] = "Top-Right", ["TOPLEFT"] = "Top-Left", ["BOTTOMRIGHT"] = "Bottom-Right", ["BOTTOMLEFT"] = "Bottom-Left" },
+      values = { ["TOP"] = L["Top"], ["RIGHT"] = L["Right"], ["BOTTOM"] = L["Bottom"], ["LEFT"] = L["Left"], ["CENTER"] = L["Center"], ["TOPRIGHT"] = L["Top-Right"], ["TOPLEFT"] = L["Top-Left"], ["BOTTOMRIGHT"] = L["Bottom-Right"], ["BOTTOMLEFT"] = L["Bottom-Left"] },
       get = function(i) return self.db.profile.miniframe.incoming.point end,
       set = function(i, v) self.db.profile.miniframe.incoming.point = v; self:SetupMiniframe() end,
      },
      irelativepoint = {
-      name = "Relative Point",
+      name = L["Relative Point"],
       order = 7.4,
       type = "select",
       style = "dropdown",
-      values = { ["TOP"] = "Top", ["RIGHT"] = "Right", ["BOTTOM"] = "Bottom", ["LEFT"] = "Left", ["CENTER"] = "Center", ["TOPRIGHT"] = "Top-Right", ["TOPLEFT"] = "Top-Left", ["BOTTOMRIGHT"] = "Bottom-Right", ["BOTTOMLEFT"] = "Bottom-Left" },
+      values = { ["TOP"] = L["Top"], ["RIGHT"] = L["Right"], ["BOTTOM"] = L["Bottom"], ["LEFT"] = L["Left"], ["CENTER"] = L["Center"], ["TOPRIGHT"] = L["Top-Right"], ["TOPLEFT"] = L["Top-Left"], ["BOTTOMRIGHT"] = L["Bottom-Right"], ["BOTTOMLEFT"] = L["Bottom-Left"] },
       get = function(i) return self.db.profile.miniframe.incoming.relativePoint end,
       set = function(i, v) self.db.profile.miniframe.incoming.relativePoint = v; self:SetupMiniframe() end,
      },
     iflashposx = {
-     name = "X Position",
-     desc = "Position along the x axis",
+     name = L["Vertical Position"],
      order = 7.5,
      type = "range",
      min = -600, max = 600, step = 1,
@@ -809,8 +818,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.incoming.x = tonumber(value); self:SetupMiniframe() end,
     },
     iflashposy = {
-     name = "Y Position",
-     desc = "Position along the y axis",
+     name = L["Horizontal Position"],
      order = 7.6,
      type = "range",
      min = -600, max = 600, step = 1,
@@ -818,7 +826,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.incoming.y = value; self:SetupMiniframe() end,
     },
     iflashheight = {
-     name = "Height",
+     name = L["Height"],
      order = 7.7,
      type = "range",
      min = 8, max = 100, step = 1,
@@ -826,7 +834,7 @@ local function giveOptions(self)
      set = function(info, value) self.db.profile.miniframe.incoming.height = value; self:SetupMiniframe() end,
     },
     iflashwidth = {
-     name = "Width",
+     name = L["Width"],
      order = 7.8,
      type = "range",
      min = 8, max = 100, step = 1,
@@ -839,16 +847,16 @@ local function giveOptions(self)
      type = "header",
     },
     framestrata = {
-     name = "Frame Strata",
+     name = L["Frame Strata"],
      order = 8.1,
      type = "select",
      style = "dropdown",
-     values = { ["BACKGROUND"] = "Background", ["LOW"] = "Low", ["MEDIUM"] = "Medium", ["HIGH"] = "High", ["DIALOG"] = "Dialog" },
+     values = { ["BACKGROUND"] = L["Background"], ["LOW"] = L["Low"], ["MEDIUM"] = L["Medium"], ["HIGH"] = L["High"], ["DIALOG"] = L["Dialog"] },
      set = function(i, v) self.db.profile.miniframe.framestrata = v; self:SetupMiniframe() end,
      get = function(i) return self.db.profile.miniframe.framestrata end,
     },
     framelevel = {
-     name = "Frame Level",
+     name = L["Frame Level"],
      order = 8.2,
      type = "range",
      min = 1, max = 100, step = 1,
@@ -858,7 +866,7 @@ local function giveOptions(self)
    },
   },
   pf = { -- PlayerFrame BEGIN
-   name = "Player XP Frame",
+   name = L["Player XP Frame"],
    order = 4.1,
    type = "group",
    args = {
@@ -870,13 +878,14 @@ local function giveOptions(self)
      get = function(i) return self.db.profile.pf.enabled end,
     },
     tooltip = {
-     name = "Tooltip",
+     name = L["Tooltip"],
      type = "toggle",
      get = function(i) return self.db.profile.pf.tooltip end,
      set = function(i, v) self.db.profile.pf.tooltip = v end,
     },
     formatstring = {
-     name = "Format String",
+     name = L["Format String"],
+	 desc = L["Changes the text that is displayed"],
      order = 2,
      type = "input",
      width = "double",
@@ -884,8 +893,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.pf.formatstring = v; self:SendXP() end,
     },
     texture = {
-     name = "Bar Texture",
-     desc = "Texture of the experience bar",
+     name = L["Bar Texture"],
      order = 3,
      type = "select",
      values = LSM:HashTable("statusbar"),
@@ -903,8 +911,7 @@ local function giveOptions(self)
 	 set = function(i, v) self.db.profile.pf.alpha = v; self:UpdateSettings() end,
 	}, ]]--
     color = {
-     name = "Experience bar color",
-     desc = "Color of the experience bar",
+     name = L["Experience bar color"],
      order = 2.2,
      type = "color",
      hasAlpha = false,
@@ -912,8 +919,7 @@ local function giveOptions(self)
      set = function(info, r, g, b) self.db.profile.pf.color.r = r; self.db.profile.pf.color.g = g; self.db.profile.pf.color.b = b; self:UpdateSettings() end,
     },
     bgcolor = {
-     name = "Experience bar background color",
-     desc = "Color of the background bar",
+     name = L["Experience bar background color"],
      order = 2.3,
      type = "color",
      hasAlpha = true,
@@ -921,8 +927,7 @@ local function giveOptions(self)
      set = function(info, r, g, b, a) self.db.profile.pf.bgcolor.r = r; self.db.profile.pf.bgcolor.g = g; self.db.profile.pf.bgcolor.b = b; self.db.profile.pf.bgcolor.a = a; self:UpdateSettings() end,
     },
     restcolor = {
-     name = "Rest bar color",
-     desc = "Color of the rest bonus bar",
+     name = L["Rest bar color"],
      order = 2.4,
      type = "color",
      hasAlpha = false,
@@ -932,19 +937,18 @@ local function giveOptions(self)
    },
   }, -- PlayerFrame END
   partyframes = { -- PartyFrames BEGIN
-   name = "Party XP Frames",
+   name = L["Party XP Frames"],
    order = 4.2,
    type = "group",
    args = {
     tooltip = {
-     name = "Tooltip",
+     name = L["Tooltip"],
      type = "toggle",
      get = function(i) return self.db.profile.partyframes.tooltip end,
      set = function(i, v) self.db.profile.partyframes.tooltip = v end,
     },
     texture = {
-     name = "Bar Texture",
-     desc = "Texture of the experience bar",
+     name = L["Bar Texture"],
      order = 3,
      type = "select",
      values = LSM:HashTable("statusbar"),
@@ -953,8 +957,7 @@ local function giveOptions(self)
      set = function(i, v) self.db.profile.partyframes.texture = v; self:HookBlizzPartyFrames() end,
     },
     restcolor = {
-     name = "Rest bar color",
-     desc = "Color of the rest bonus bar",
+     name = L["Rest bar color"],
      order = 2.4,
      type = "color",
      hasAlpha = false,
@@ -962,8 +965,7 @@ local function giveOptions(self)
      set = function(info, r, g, b) self.db.profile.partyframes.rested.r = r; self.db.profile.partyframes.rested.g = g; self.db.profile.partyframes.rested.b = b; self:HookBlizzPartyFrames() end,
     },
     xpcolor = {
-     name = "Experience bar color",
-     desc = "Color of the experience bar",
+     name = L["Experience bar color"],
      order = 2.2,
      type = "color",
      hasAlpha = false,
@@ -1027,6 +1029,7 @@ function FriendXP:CreateFriendXPBar() -- Should merge its update functions here 
 
  xpbar.xp:SetMinMaxValues(0, 1000)
  xpbar.xp:SetValue(0)
+ xpbar.xp:GetStatusBarTexture():SetHorizTile(self.db.profile.friendbar.tile)
  xpbar.rest:SetMinMaxValues(0, 1000)
  xpbar.rest:SetValue(0)
 
@@ -1048,7 +1051,7 @@ function FriendXP:UpdateSettings()
  xpbar:SetHeight(self.db.profile.friendbar.height)
  xpbar:SetWidth(UIParent:GetWidth() * self.db.profile.friendbar.width)
 
- xpbar.bg:SetTexture(LSM:Fetch("statusbar", self.db.profile.friendbar.texture))
+ xpbar.bg:SetTexture(LSM:Fetch("statusbar", self.db.profile.friendbar.texture), self.db.profile.friendbar.tile)
  xpbar.rest:SetStatusBarTexture(LSM:Fetch("statusbar", self.db.profile.friendbar.texture))
  xpbar.xp:SetStatusBarTexture(LSM:Fetch("statusbar", self.db.profile.friendbar.texture))
 
@@ -1057,12 +1060,15 @@ function FriendXP:UpdateSettings()
  xpbar.rest:SetStatusBarColor(self.db.profile.friendbar.rest.r, self.db.profile.friendbar.rest.g, self.db.profile.friendbar.rest.b)
 
  -- Not sure what this is for
- if xpbar.xp:GetStatusBarTexture().SetHorizTile then
-  xpbar.xp:GetStatusBarTexture():SetHorizTile(false)
- end
- if xpbar.rest:GetStatusBarTexture().SetHorizTile then
-  xpbar.rest:GetStatusBarTexture():SetHorizTile(false)
- end
+ --if xpbar.xp:GetStatusBarTexture().SetHorizTile then
+ --xpbar.xp:GetStatusBarTexture():SetHorizTile(false)
+ --end
+ --if xpbar.rest:GetStatusBarTexture().SetHorizTile then
+  --xpbar.rest:GetStatusBarTexture():SetHorizTile(false)
+ --end
+
+ xpbar.xp:GetStatusBarTexture():SetHorizTile(self.db.profile.friendbar.tile)
+ xpbar.rest:GetStatusBarTexture():SetHorizTile(self.db.profile.friendbar.tile)
 
  xpbar.text:SetFont(LSM:Fetch("font", self.db.profile.friendbar.text.font), self.db.profile.friendbar.text.size, self.db.profile.friendbar.text.style)
  xpbar.text:SetTextColor(self.db.profile.friendbar.text.color.r, self.db.profile.friendbar.text.color.g, self.db.profile.friendbar.text.color.b, self.db.profile.friendbar.text.color.a);
@@ -1107,11 +1113,6 @@ function FriendXP:UpdateFriendXP(ft) -- Friendbar
  end
 
  if (ft == nil) then return end
-
- if (activeFriend ~= "" and activeFriend ~= ft["name"]) then
-  self:Debug("Returning because activeFriend " .. activeFriend .. " is not selected " .. ft["name"])
-  return
- end
 
  xpbar.xp:SetMinMaxValues(0, ft["totalxp"])
  xpbar.xp:SetValue(ft["xp"])
@@ -1158,33 +1159,34 @@ function FriendXP:FormatString(string, ft)
  return string
 end
 
-function FriendXP:FlashFrame(frame)
- local alpha = frame:GetAlpha()
- if (frame.direction == nil) then
-  frame.direction = 0;
- end
- local direction = frame.direction
+function FriendXP:FlashFrame(frame, elapsed)
+	local alpha = frame:GetAlpha()
+	if (not frame.startTime) then frame.startTime = GetTime() end
+	if (frame.direction == nil) then frame.direction = 0 end
+ 
+	if (frame.direction == 0) then
+		alpha = GetTime() - frame.startTime -- Fade in over a second
+		if alpha < 0.01 then alpha = 0.01 end -- GetTime() - startTime is 0 for a wee bit so this stop the part below from just hiding the frame immediately
+		if (alpha > 1) then
+			alpha = 1
+			frame.direction = 1
+		end
+	else
+		alpha = (frame.startTime + 2.0 - GetTime()) -- Fade out over a second
+		if (alpha <= 0) then
+			alpha = 0
+			frame.direction = 0
+		end
+	end
 
- if (direction == 0) then
-  alpha = alpha + 0.1;
-  if (alpha > 1) then
-   alpha = 1;
-   frame.direction = 1;
-  end
- else
-  alpha = alpha - 0.1;
-  if (alpha < 0) then
-   alpha = 0;
-   frame.direction = 0;
-  end
- end
+	frame:SetAlpha(alpha)
 
- frame:SetAlpha(alpha)
-
- if (frame:GetAlpha() <= 0) then
-  frame:SetAlpha(0)
-  frame:Hide()
- end
+	if (frame:GetAlpha() <= 0) then
+		frame.startTime = nil
+		frame.direction = nil
+		frame:SetAlpha(0)
+		frame:Hide()
+	end
 end
 
 function FriendXP:SetupMiniframe()
@@ -1196,8 +1198,8 @@ function FriendXP:SetupMiniframe()
   Miniframe.incoming = CreateFrame("Frame", nil, Miniframe)
   Miniframe.incoming:Hide()
   --Miniframe.flash:SetScript("OnUpdate", function(self) local alpha = self:GetAlpha(); alpha = alpha - 0.03; if (alpha < 0) then alpha = 0; end; self:SetAlpha(alpha); if (self:GetAlpha() <= 0) then self:SetAlpha(1); self:Hide(); end; end)
-  Miniframe.flash:SetScript("OnUpdate", function(self) FriendXP:FlashFrame(self) end)
-  Miniframe.incoming:SetScript("OnUpdate", function(self) FriendXP:FlashFrame(self) end)
+  Miniframe.flash:SetScript("OnUpdate", function(self, elapsed) FriendXP:FlashFrame(self, elapsed) end)
+  Miniframe.incoming:SetScript("OnUpdate", function(self, elapsed) FriendXP:FlashFrame(self, elapsed) end)
 
  -- For moving
   Miniframe.move = CreateFrame("Frame", nil, UIParent)
@@ -1285,7 +1287,6 @@ function FriendXP:UpdateMiniframe()
    end
   else
    self:Debug("Removing max level from miniframe")
-   --self:RemoveFromActive(key) Probably don't need to remove from friends table, might as well show in ldb
    self:RecycleFrame(key)
   end
 
@@ -1503,8 +1504,11 @@ function FriendXP:OnInitialize()
    ignoreWhisper = false,
    onlyFriends = false,
    doLevelUp = true,
+   grid2 = false,
    friendbar = {
     enabled = false,
+	personal = false,
+	tile = false,
     framelevel = 1,
     framestrata = "MEDIUM",
     x = maxwidth/2 - (maxwidth*0.75)/2,
@@ -1714,7 +1718,7 @@ function FriendXP:OnInitialize()
  self:CreateFonts()
  self:SetupMiniframe()
  self:HookBlizzPartyFrames()
-
+ self:SetupGrid2()
  self:SetEnabledState(self.db.profile.enabled)
 end
 
@@ -1754,7 +1758,7 @@ function FriendXP:UpdateFont(thing)
  fonts[thing]:SetTextColor(things[thing]["color"]["r"], things[thing]["color"]["g"], things[thing]["color"]["b"])
 end
 
-function FriendXP:UpdateFONTS() -- Going do something about all these update fonts someday
+function FriendXP:UpdateFONTS() -- Going do something about all these update fonts someday; also do I really need a font for every class color
  for i, v in pairs(RAID_CLASS_COLORS) do
   self.fonts["class"][i]:SetFont(LSM:Fetch("font", self.db.profile.tooltip.normal.font), self.db.profile.tooltip.normal.size)
   self.fonts["class"][i]:SetTextColor(RAID_CLASS_COLORS[i]["r"], RAID_CLASS_COLORS[i]["g"], RAID_CLASS_COLORS[i]["b"])
@@ -1777,7 +1781,7 @@ function FriendXP:UpdateMedia(event, mediatype, key)
   if key == self.db.profile.miniframe.incoming.texture then doUpdate = true end
  end
 
- if doUpdate == true then
+ if doUpdate then
   self:UpdateSettings();
   self:UpdateFont("header");
   self:UpdateFont("normal");
@@ -1796,7 +1800,6 @@ function FriendXP:UpdateDb()
 end
 
 function FriendXP:OnEnable()
- --self:RegisterEvent("PLAYER_XP_UPDATE","SendXP")
  self:RegisterBucketEvent({ "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION", "ENABLE_XP_GAIN", "DISABLE_XP_GAIN" }, 2, "SendXP")
  self:ScheduleRepeatingTimer("SendXP", 45)
  self:UpdateSettings()
@@ -1813,15 +1816,13 @@ function FriendXP:OnEnable()
  end
 end
 
-function FriendXP:OnDisable()
- --self:UnregisterAllEvents()
- self:UnregisterAllBuckets()
- self:CancelAllTimers()
- xpbar:Hide()
- Miniframe:Hide()
+function FriendXP:OnDisable() -- FIX ME, Check if this is even called; also hide party/player xp frames
+	self:UnregisterAllBuckets()
+	self:CancelAllTimers()
+	xpbar:Hide()
+	Miniframe:Hide()
 end
 
--- Does this have a use anymore?
 function FriendXP:ToggleFriendbar()
  if (self.db.profile.friendbar.enabled and self.db.profile.enabled) then
   xpbar:Show()
@@ -1837,7 +1838,7 @@ function FriendXP:WorldEnter()
 
  configGenerated = true
 
- self:SendXP();
+ self:SendXP()
 end
 
 function FriendXP:HandleIt(input)
@@ -1897,20 +1898,14 @@ function FriendXP:HandleIt(input)
 end
 
 function FriendXP:SendXP()
- if (self.db.profile.miniframe.enabled and self.db.profile.miniframe.outgoing.enabled) then
-  Miniframe.flash:Show()
- end
+	if (self.db.profile.miniframe.enabled and self.db.profile.miniframe.outgoing.enabled) then
+		Miniframe.flash:Show()
+	end
 
  local restbonus = GetXPExhaustion()
  local xpdisabled = false
- if (restbonus == nil) then
-  restbonus = 0
- end
- if (xpdisabled == true) then
-  xpdisabled = 1
- else
-  xpdisabled = 0
- end
+ if (restbonus == nil) then restbonus = 0 end
+ if (xpdisabled == true) then xpdisabled = 1 else xpdisabled = 0 end
 
  local player = UnitName("player");
  local xp = UnitXP("player");
@@ -1932,7 +1927,7 @@ function FriendXP:SendXP()
 
  self:UpdateMiniframe()
 
- if (activeFriend == player) then -- If the player is selected to be shown on the friendbar, then do update
+ if (activeFriend == player or self.db.profile.friendbar.personal) then -- If the player is selected to be shown on the friendbar, then do update
   self:UpdateFriendXP_HELPER(player)
  end
 
@@ -1972,7 +1967,7 @@ function FriendXP:SendXP()
     end
    end
   end
-
+	-- FIX ME Check if this friend stuff still works
   local BNFriends, _ = BNGetNumFriends() -- Then do RealID/BattleTag Friends, doesn't work with connected realms
   if (BNFriends > 0) then
    for i = 1, BNFriends do
@@ -1990,31 +1985,23 @@ function FriendXP:SendXP()
    end
   end
  end
+ if self.db.profile.grid2 and self.grid2setup then -- But update grid 2 anyway
+	self.updateGrid2()
+ end
 end
 
 -- prefix, message, distribution, sender
 function FriendXP:OnCommReceived(a,b,c,d)
  self:Debug("OnCommReceived: Prefix " .. a .. ":" .. b .. ":" .. ", Channel " .. c .. ":" .. d)
- if (a ~= "friendxp") then
-  return
- end
+ if (a ~= "friendxp") then return end
 
- if (c == "GUILD" and self.db.profile.guildAll == false) then -- Only process GUILD if Send to guild is enabled
-  return
- end
-
+ if (c == "GUILD" and not self.db.profile.guildAll) then return end
 --[[ if (c == "BATTLEGROUND" and self.db.profile.bgAll == false) then -- Only process BATTLEGROUND if Send to bg is enabled
   return
  end
 ]]--
-
- if ((c == "RAID" or c == "PARTY" or c == "INSTANCE_CHAT") and self.db.profile.partyAll == false) then -- Only process PARTY/RAID if send to party is enabled
-  return
- end
-
- if (c == "WHISPER" and self.db.profile.ignoreWhisper == true) then -- Ignore all whispers
-  return
- end
+ if ((c == "RAID" or c == "PARTY" or c == "INSTANCE_CHAT") and not self.db.profile.partyAll) then return end
+ if (c == "WHISPER" and self.db.profile.ignoreWhisper == true) then return end
 
  local success, name, xp, xptotal, level, restbonus, xpdisabled, class, maxlevel = self:Deserialize(b)
  if (not success) then
@@ -2025,6 +2012,7 @@ function FriendXP:OnCommReceived(a,b,c,d)
  self:Debug(name .. " " .. xp .. " " .. xptotal .. " " .. level .. " " .. restbonus .. " " .. class .. " " .. maxlevel)
 
  if (UnitName("player") == name) then -- Don't show stuff we sent, mainly for PARTY and GUILD
+  
   self:Debug("Returning from OnComm because name == player")
   return
  end
@@ -2053,18 +2041,13 @@ function FriendXP:OnCommReceived(a,b,c,d)
   return
  end
 
- if (restbonus == nil) then --need to see if these serve a purpose
-  restbonus = 0
- end
- if (xpdisabled == nil) then
-  xpdisabled = 0
- end
+ if (restbonus == nil) then restbonus = 0 end
+ if (xpdisabled == nil) then xpdisabled = 0 end
 
  if (name ~= nil and xp ~= nil and xptotal ~= nil and level ~= nil and class ~= nil and maxlevel ~= nil) then
   if (self.db.profile.miniframe.enabled and self.db.profile.miniframe.incoming.enabled) then -- Only flash on valid updates
    Miniframe.incoming:Show()
   end
-  if self.db.profile.debug then self.Print(self,"UpdateFriendXP",name,level,xp,xptotal,restbonus,xpdisabled) end
 
   if (self.db.profile.doLevelUp) then
    local previousLevel = self:GetLevelByPlayer(name)
@@ -2087,14 +2070,18 @@ function FriendXP:OnCommReceived(a,b,c,d)
  }
 
  self:UpdateFriendXP_HELPER(name)
- self:UpdateMiniframe();
+ self:UpdateMiniframe()
+ if self.db.profile.grid2 and self.grid2setup then
+	--print("Updating all things for grid2")
+	self.updateGrid2()
+ end
 end
 
 function FriendXP:RemoveFromActive(friend)
  if (friends[friend]) then
   self:Debug("Removing " .. friend .. " from friends table")
   friends[friend] = nil
-  --table.remove(friends, friend)
+
  end
 end
 
@@ -2163,41 +2150,44 @@ function FriendXP:Debug(msg)
 end
 
 function FriendXP.LDB.OnEnter(self)
- local tooltip = LQT:Acquire("FriendXP", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
- self.tooltip = tooltip
- if _G.TipTac and _G.TipTac.AddModifiedTip then
-  _G.TipTac:AddModifiedTip(self.tooltip, true)
- end
+	local tooltip
 
- tooltip:SetHeaderFont(fonts["header"])
- tooltip:SetFont(fonts["normal"])
- tooltip:AddHeader('Name','Level','XP', 'Rest Bonus', L["XPDisabled"])
- tooltip:AddSeparator()
- for key, value in pairs(friends) do
-  local ft = friends[key]
-  local xpdisablemsg = "";
-  if (ft["xpdisabled"] == 1) then
-   xpdisablemsg = "XP Disabled";
-  end
-  tooltip:AddLine(ft["name"],ft["level"],ft["xp"] .. "/" .. ft["totalxp"],ft["restbonus"], xpdisablemsg)
- end
- tooltip:SmartAnchorTo(self)
- tooltip:Show()
+	if WoWClassic then
+		tooltip = LQT:Acquire("FriendXP", 4, "LEFT", "RIGHT", "RIGHT", "RIGHT")
+		tooltip:AddHeader(L["Name"], L["Level"], L["XP"], L["Rest Bonus"])
+	else
+		tooltip = LQT:Acquire("FriendXP", 5, "LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT")
+		tooltip:AddHeader(L["Name"], L["Level"], L["XP"], L["Rest Bonus"], L["XPDisabled"])
+	end
+	self.tooltip = tooltip
+	if _G.TipTac and _G.TipTac.AddModifiedTip then
+		_G.TipTac:AddModifiedTip(self.tooltip, true)
+	end
+	tooltip:SetHeaderFont(fonts["header"])
+	tooltip:SetFont(fonts["normal"])
+	tooltip:AddSeparator()
+	for key, value in pairs(friends) do
+		local ft = friends[key]
+			local xpdisablemsg = "";
+		if (ft["xpdisabled"] == 1 and not WoWClassic) then
+			xpdisablemsg = "XP Disabled";
+		end
+		tooltip:AddLine(ft["name"],ft["level"],ft["xp"] .. "/" .. ft["totalxp"],ft["restbonus"], xpdisablemsg)
+	end
+	tooltip:SmartAnchorTo(self)
+	tooltip:Show()
 end
 
 function FriendXP.LDB.OnLeave(self)
- LQT:Release(self.tooltip)
- self.tooltip = nil
+	LQT:Release(self.tooltip)
+	self.tooltip = nil
 end
 
 function FriendXP:MiniTooltip(frame, show, fd)
  if (show) then
-  if (not self.db.profile.miniframe.tooltip.enabled) then
-   return
-  end
-  if (InCombatLockdown() and self.db.profile.miniframe.tooltip.combatDisable) then
-   return
-  end
+  if not self.db.profile.miniframe.tooltip.enabled then return end
+  if (InCombatLockdown() and self.db.profile.miniframe.tooltip.combatDisable) then return end
+  
   local tooltip = LQT:Acquire("FriendXP", 2, "LEFT", "RIGHT")
   self.tooltip = tooltip
 
@@ -2494,4 +2484,57 @@ function FriendXP:HandlePlayerXP(xp, xptotal, restbonus)
  self.playerxp.xp:SetValue(xp)
  
  PlayerName:SetText(self:GetXPByUnit("player", self.db.profile.pf.formatstring))
+end
+
+function FriendXP:SetupGrid2()
+	if not self.db.profile.grid2 or not IsAddOnLoaded("Grid2") or self.grid2setup then return end
+	self.grid2setup = true
+	GridFriendXP = Grid2.statusPrototype:new("FriendXP", false)
+	GridFriendXP.GetColor = Grid2.statusLibrary.GetColor
+
+	function GridFriendXP:IsActive(unit)
+		--print("IsActive", unit)
+		local name, _ = UnitName(unit)
+		if (name == nil) then return false end
+		local ft = FriendXP:FetchFriend(name)
+		if ft == nil then return false end
+		
+		return true
+	end
+
+	function GridFriendXP:GetPercent(unit)
+		local xp = FriendXP:GetXPByUnit(unit, "%p")
+		if not xp then return end
+		--print(FriendXP:GetXPByUnit(unit, "%p"))
+		return tonumber(xp) * 0.01 
+	end
+
+	function GridFriendXP:GetText(unit)
+		--print(FriendXP:GetXPByUnit(unit, self.dbx.formatString), unit, 'GetText')
+		return FriendXP:GetXPByUnit(unit, self.dbx.formatString)
+	end
+
+	function GridFriendXP:GetColor(unit)
+		return self.dbx.color1.r, self.dbx.color1.g, self.dbx.color1.b, self.dbx.color1.a
+	end
+
+	self.updateGrid2 = function() GridFriendXP:UpdateAllUnits() end -- Probably not ideal
+	Grid2.setupFunc["FriendXP"] = function(baseKey, dbx)
+		Grid2:RegisterStatus(GridFriendXP, {"text", "percent", "color"}, baseKey, dbx)
+
+		return GridPlayerXP
+	end
+
+	Grid2:DbSetStatusDefaultValue("FriendXP", {type = "FriendXP", formatString = "%p%", colorCount = 1, color1 = {r=0.6,g=0,b=0.6,a=1}})
+	Grid2Options:RegisterStatusOptions("FriendXP", "misc", function(self, status, options, optionParams)
+	self:MakeStatusStandardOptions(status, options, optionParams)
+	--self:MakeStatusColorOptions(status, options, optionParams)
+	options.formatString = {
+		type  = "input",
+		name  = L["Format String"],
+		desc  = L["Changes the text that is displayed"],
+		get   = function ()	return status.dbx.formatString end,
+		set   = function (_, v)	status.dbx.formatString = v status:UpdateAllUnits() end,
+	}
+	end)
 end
