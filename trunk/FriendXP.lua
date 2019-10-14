@@ -2526,15 +2526,17 @@ function FriendXP:SetupGrid2()
 	end
 
 	Grid2:DbSetStatusDefaultValue("FriendXP", {type = "FriendXP", formatString = "%p%", colorCount = 1, color1 = {r=0.6,g=0,b=0.6,a=1}})
-	Grid2Options:RegisterStatusOptions("FriendXP", "misc", function(self, status, options, optionParams)
-	self:MakeStatusStandardOptions(status, options, optionParams)
-	--self:MakeStatusColorOptions(status, options, optionParams)
-	options.formatString = {
-		type  = "input",
-		name  = L["Format String"],
-		desc  = L["Changes the text that is displayed"],
-		get   = function ()	return status.dbx.formatString end,
-		set   = function (_, v)	status.dbx.formatString = v status:UpdateAllUnits() end,
-	}
-	end)
+	if IsAddOnLoaded("Grid2Options") then
+		Grid2Options:RegisterStatusOptions("FriendXP", "misc", function(self, status, options, optionParams)
+		self:MakeStatusStandardOptions(status, options, optionParams)
+		--self:MakeStatusColorOptions(status, options, optionParams)
+		options.formatString = {
+			type  = "input",
+			name  = L["Format String"],
+			desc  = L["Changes the text that is displayed"],
+			get   = function ()	return status.dbx.formatString end,
+			set   = function (_, v)	status.dbx.formatString = v status:UpdateAllUnits() end,
+		}
+		end)
+	end
 end
