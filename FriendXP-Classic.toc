@@ -3,7 +3,7 @@
 ## Version: @project-version@
 ## Notes: Tracks friend's experience
 ## Author: Bartruby of Cairne
-## OptionalDeps: Ace3, Grid2
+## OptionalDeps: Ace3, Grid2, Grid2Options
 ## X-Embeds: Ace3
 ## SavedVariables: FriendXPDB
 
