@@ -1141,7 +1141,7 @@ function FriendXP:FormatString(string, ft)
  string = gsub(string, "%%l", tostring(ft["level"]))
  string = gsub(string, "%%xp", tostring(ft["xp"]))
  string = gsub(string, "%%txp", tostring(ft["totalxp"]))
- string = gsub(string, "%%p", self:Round((ft["xp"]/ft["totalxp"])*100))
+ string = gsub(string, "%%p(%d?)", function(digits) return self:Round((ft["xp"]/ft["totalxp"])*100, tonumber(digits)) end)
  string = gsub(string, "%%rm", ft["totalxp"] - ft["xp"])
 
  if (ft["restbonus"] > 0) then
@@ -2505,7 +2505,7 @@ function FriendXP:SetupGrid2()
 	function GridFriendXP:GetPercent(unit)
 		local xp = FriendXP:GetXPByUnit(unit, "%p")
 		if not xp then return end
-		--print(FriendXP:GetXPByUnit(unit, "%p"))
+
 		return tonumber(xp) * 0.01 
 	end
 
@@ -2537,6 +2537,8 @@ function FriendXP:SetupGrid2()
 			get   = function ()	return status.dbx.formatString end,
 			set   = function (_, v)	status.dbx.formatString = v status:UpdateAllUnits() end,
 		}
-		end)
+		end, {
+			titleIcon = "Interface\\ICONS\\INV_Misc_Gem_Variety_02",
+		})
 	end
 end
