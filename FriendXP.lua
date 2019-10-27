@@ -1141,7 +1141,7 @@ function FriendXP:FormatString(string, ft)
  string = gsub(string, "%%l", tostring(ft["level"]))
  string = gsub(string, "%%xp", tostring(ft["xp"]))
  string = gsub(string, "%%txp", tostring(ft["totalxp"]))
- string = gsub(string, "%%p(%d?)", function(digits) return self:Round((ft["xp"]/ft["totalxp"])*100, tonumber(digits)) end)
+ string = gsub(string, "%%p(%d?)", function(digits) if digits ~= "" then return self:Round((ft["xp"]/ft["totalxp"])*100, tonumber(digits)) else return floor((ft["xp"]/ft["totalxp"])*100) end end)
  string = gsub(string, "%%rm", ft["totalxp"] - ft["xp"])
 
  if (ft["restbonus"] > 0) then

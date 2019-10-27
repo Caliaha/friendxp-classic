@@ -1,4 +1,5 @@
 package-as: FriendXP-Classic
+enable-nolib-creation: no
 ignore:
  - Artwork/Source
 
