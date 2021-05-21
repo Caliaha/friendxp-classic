@@ -1003,10 +1003,10 @@ end
 
 function FriendXP:CreateFriendXPBar() -- Should merge its update functions here aswell like SetupMiniframe
  if (xpbar) then return end
- xpbar = CreateFrame("Frame", nil, UIParent)
+ xpbar = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
  xpbar.bg = xpbar:CreateTexture(nil, 'BACKGROUND')
- xpbar.rest = CreateFrame('StatusBar', nil, xpbar)
- xpbar.xp = CreateFrame('StatusBar', nil, xpbar.rest)
+ xpbar.rest = CreateFrame('StatusBar', nil, xpbar, BackdropTemplateMixin and "BackdropTemplate")
+ xpbar.xp = CreateFrame('StatusBar', nil, xpbar.rest, BackdropTemplateMixin and "BackdropTemplate")
 
  xpbar:SetFrameStrata(self.db.profile.friendbar.framestrata)
  xpbar:SetFrameLevel(self.db.profile.friendbar.framelevel)
@@ -1034,7 +1034,7 @@ function FriendXP:CreateFriendXPBar() -- Should merge its update functions here 
  xpbar.rest:SetValue(0)
 
  -- For moving
- xpbar.move = CreateFrame("Frame", nil, UIParent)
+ xpbar.move = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
  xpbar.move:SetBackdrop({bgFile = LSM:Fetch("background", "Solid")})
  xpbar.move:SetBackdropColor(1,0,0,0.75)
  xpbar.move:SetAllPoints(true)
@@ -1191,18 +1191,18 @@ end
 
 function FriendXP:SetupMiniframe()
  if (Miniframe == nil) then
-  Miniframe = CreateFrame("Frame", nil, UIParent)
+  Miniframe = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
   Miniframe:SetBackdrop({bgFile = LSM:Fetch("background", self.db.profile.miniframe.texture), edgeFile = LSM:Fetch("border", self.db.profile.miniframe.border.border), tile = false, tileSize = 0, edgeSize = self.db.profile.miniframe.border.bordersize, insets = { left = self.db.profile.miniframe.border.inset.left, right = self.db.profile.miniframe.border.inset.right, top = self.db.profile.miniframe.border.inset.top, bottom = self.db.profile.miniframe.border.inset.bottom }})
-  Miniframe.flash = CreateFrame("Frame", nil, Miniframe)
+  Miniframe.flash = CreateFrame("Frame", nil, Miniframe, BackdropTemplateMixin and "BackdropTemplate")
   Miniframe.flash:Hide()
-  Miniframe.incoming = CreateFrame("Frame", nil, Miniframe)
+  Miniframe.incoming = CreateFrame("Frame", nil, Miniframe, BackdropTemplateMixin and "BackdropTemplate")
   Miniframe.incoming:Hide()
   --Miniframe.flash:SetScript("OnUpdate", function(self) local alpha = self:GetAlpha(); alpha = alpha - 0.03; if (alpha < 0) then alpha = 0; end; self:SetAlpha(alpha); if (self:GetAlpha() <= 0) then self:SetAlpha(1); self:Hide(); end; end)
   Miniframe.flash:SetScript("OnUpdate", function(self, elapsed) FriendXP:FlashFrame(self, elapsed) end)
   Miniframe.incoming:SetScript("OnUpdate", function(self, elapsed) FriendXP:FlashFrame(self, elapsed) end)
 
  -- For moving
-  Miniframe.move = CreateFrame("Frame", nil, UIParent)
+  Miniframe.move = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
   Miniframe.move:SetBackdrop({bgFile = LSM:Fetch("background", "Solid")})
   Miniframe.move:SetBackdropColor(1,0,0,0.75)
   Miniframe.move:SetAllPoints(Miniframe)
@@ -1421,11 +1421,11 @@ function FriendXP:GetCreateXPBar(key)
     return miniframes[key]
   else
    self:Debug("Creating " .. key);
-   frame = CreateFrame("StatusBar", nil, Miniframe)
-   frame.xp = CreateFrame("StatusBar", nil, frame)
+   frame = CreateFrame("StatusBar", nil, Miniframe, BackdropTemplateMixin and "BackdropTemplate")
+   frame.xp = CreateFrame("StatusBar", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
    frame.bg = frame:CreateTexture(nil, 'BACKGROUND')
    frame.text = frame.xp:CreateFontString(nil, 'OVERLAY')
-   frame.buttonbg = CreateFrame("Frame", nil, frame)
+   frame.buttonbg = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
    frame.button = CreateFrame("Button", nil, frame.buttonbg)
    frame.button:RegisterForClicks("AnyDown")
    frame.button:ClearAllPoints()
@@ -1449,14 +1449,14 @@ function FriendXP:GetFrame(name) -- Player name is new frame ref thingy
   return frame
  else
   self:Debug("Creating " .. name);
-  frame = CreateFrame("StatusBar", nil, Miniframe)
+  frame = CreateFrame("StatusBar", nil, Miniframe, BackdropTemplateMixin and "BackdropTemplate")
   frame.id = y
-  frame.xp = CreateFrame("StatusBar", nil, frame)
+  frame.xp = CreateFrame("StatusBar", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
   frame.xp:SetAllPoints(true)
   frame.bg = frame:CreateTexture(nil, 'BACKGROUND')
   frame.text = frame.xp:CreateFontString(nil, 'OVERLAY')
-  frame.buttonbg = CreateFrame("Frame", nil, frame)
-  frame.button = CreateFrame("Button", nil, frame.buttonbg)
+  frame.buttonbg = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
+  frame.button = CreateFrame("Button", nil, frame.buttonbg, BackdropTemplateMixin and "BackdropTemplate")
   frame.button:RegisterForClicks("AnyDown")
   frame.button:ClearAllPoints()
   frame.button:SetAllPoints(true)
@@ -2327,13 +2327,13 @@ function FriendXP:HookBlizzPartyFrames()
  if (not self.db.profile.integrateParty) then return end
  for i = 1, 4 do
   if (partyXPFrames[i] == nil) then
-   local partyXP = CreateFrame("Frame", nil, _G["PartyMemberFrame" .. i])
+   local partyXP = CreateFrame("Frame", nil, _G["PartyMemberFrame" .. i], BackdropTemplateMixin and "BackdropTemplate")
    partyXP:SetBackdrop({bgFile = LSM:Fetch("background", "Solid")})
    partyXP:SetBackdropColor(0,0,0,.5)
    partyXP:SetPoint("TOPLEFT", _G["PartyMemberFrame" .. i], "TOPLEFT", 46, -31)
    partyXP:SetWidth(66)
    partyXP:SetHeight(4)
-   partyXP.frame = CreateFrame("Frame", nil, partyXP)
+   partyXP.frame = CreateFrame("Frame", nil, partyXP, BackdropTemplateMixin and "BackdropTemplate")
    partyXP.frame:SetBackdrop({bgFile = LSM:Fetch("background", "PartyXPBar"), tile = false, tileSize = 0, insets = { left = 0, right = 0, top = 0, bottom = 0 }})
    partyXP.frame:ClearAllPoints()
    partyXP.frame:SetHeight(32)
@@ -2438,7 +2438,7 @@ function FriendXP:HandlePlayerXP(xp, xptotal, restbonus)
  
  if (not self.playerxp) then
   --_G["PlayerFrame"]:SetFrameLevel(_G["PlayerFrame"]:GetFrameLevel() + 1)
-  local frame = CreateFrame("Frame", nil, _G["PlayerFrame"])
+  local frame = CreateFrame("Frame", nil, _G["PlayerFrame"], BackdropTemplateMixin and "BackdropTemplate")
   frame:SetBackdrop({bgFile = LSM:Fetch("statusbar", "Blizzard")})
   frame:SetBackdropColor(self.db.profile.pf.bgcolor.r, self.db.profile.pf.bgcolor.g, self.db.profile.pf.bgcolor.b, self.db.profile.pf.bgcolor.a)
   frame:SetPoint("TOPLEFT", _G["PlayerFrame"], "TOPLEFT", 110, -24)
