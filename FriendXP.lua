@@ -1725,15 +1725,15 @@ end
 function FriendXP:CreateFonts()
  self.fonts["class"] = { }
  fonts["header"] = CreateFont("FriendXPFontHeader")
- fonts["header"]:SetFont(LSM:Fetch("font", FriendXP.db.profile.tooltip.header.font),self.db.profile.tooltip.header.size)
+ fonts["header"]:SetFont(LSM:Fetch("font", FriendXP.db.profile.tooltip.header.font),self.db.profile.tooltip.header.size, "")
  fonts["header"]:SetTextColor(self.db.profile.tooltip.header.color.r, self.db.profile.tooltip.header.color.g, self.db.profile.tooltip.header.color.b)
  fonts["normal"] = CreateFont("FriendXPFontNormal")
- fonts["normal"]:SetFont(LSM:Fetch("font", FriendXP.db.profile.tooltip.normal.font), self.db.profile.tooltip.normal.size)
+ fonts["normal"]:SetFont(LSM:Fetch("font", FriendXP.db.profile.tooltip.normal.font), self.db.profile.tooltip.normal.size, "")
  fonts["normal"]:SetTextColor(self.db.profile.tooltip.normal.color.r, self.db.profile.tooltip.normal.color.g, self.db.profile.tooltip.normal.color.b)
 --RAID_CLASS_COLORS[class]["r"], RAID_CLASS_COLORS[class]["g"], RAID_CLASS_COLORS[class]["b"]
  for i, v in pairs(RAID_CLASS_COLORS) do
   self.fonts["class"][i] = CreateFont("FriendXPClassColor" .. i)
-  self.fonts["class"][i]:SetFont(LSM:Fetch("font", self.db.profile.tooltip.normal.font), self.db.profile.tooltip.normal.size)
+  self.fonts["class"][i]:SetFont(LSM:Fetch("font", self.db.profile.tooltip.normal.font), self.db.profile.tooltip.normal.size, "")
   self.fonts["class"][i]:SetTextColor(RAID_CLASS_COLORS[i]["r"], RAID_CLASS_COLORS[i]["g"], RAID_CLASS_COLORS[i]["b"])
  end
 end
@@ -1744,7 +1744,7 @@ function FriendXP:UpdateFonts(thing, size, r, g, b)
   return
  end
  local things = self.db.profile.tooltip
- fonts[thing]:SetFont(LSM:Fetch("font", things[thing]["font"]), size)
+ fonts[thing]:SetFont(LSM:Fetch("font", things[thing]["font"]), size, "")
  fonts[thing]:SetTextColor(r, g, b)
 end
 
@@ -1754,7 +1754,7 @@ function FriendXP:UpdateFont(thing)
  end
 
  local things = self.db.profile.tooltip
- fonts[thing]:SetFont(LSM:Fetch("font", things[thing]["font"]), things[thing]["size"])
+ fonts[thing]:SetFont(LSM:Fetch("font", things[thing]["font"]), things[thing]["size"], "")
  fonts[thing]:SetTextColor(things[thing]["color"]["r"], things[thing]["color"]["g"], things[thing]["color"]["b"])
 end
 
@@ -2357,7 +2357,7 @@ function FriendXP:HookBlizzPartyFrames()
    partyXP.xpbar:SetValue(200)
 
    partyXP.text = partyXP.xpbar:CreateFontString(nil, 'OVERLAY')
-   partyXP.text:SetFont(LSM:Fetch("font", "Friz Quadrata TT"), 10)
+   partyXP.text:SetFont(LSM:Fetch("font", "Friz Quadrata TT"), 10, "")
    partyXP.text:SetAllPoints(true)
 
    partyXP.lastUpdate = 0
