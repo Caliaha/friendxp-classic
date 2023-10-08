@@ -3,6 +3,8 @@
 ## Version: @project-version@
 ## Notes: Tracks friend's experience
 ## Author: Bartruby of Cairne
+## X-Curse-Project-ID: 322454
+## X-WoWI-ID: 25297
 ## OptionalDeps: Ace3, Grid2, Grid2Options
 ## X-Embeds: Ace3
 ## SavedVariables: FriendXPDB
