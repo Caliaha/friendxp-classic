@@ -3,7 +3,7 @@ enable-nolib-creation: no
 ignore:
  - Artwork/Source
  
- externals:
+externals:
  libs/LibStub:
   url: svn://svn.wowace.com/wow/libstub/mainline/trunk
   tag: latest
