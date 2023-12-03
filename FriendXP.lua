@@ -1837,9 +1837,18 @@ function FriendXP:WorldEnter()
  self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 
  configGenerated = true
-
+ ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", FriendXP_RemoveNoPlayerNamed)
  self:SendXP()
 end
+
+function FriendXP_RemoveNoPlayerNamed(self, event, msg, ...)
+	found = string.find(msg, "^No player named '.-' is currently playing.$")
+	
+	if not found then return false end
+	
+	return true -- Hide message
+end
+
 
 function FriendXP:HandleIt(input)
  if not input then return end
@@ -1957,28 +1966,30 @@ function FriendXP:SendXP()
  end
 
  if (self.db.profile.sendAll == true) then -- Send to all friends
-  local numberOfFriends, onlineFriends = C_FriendList.GetNumFriends() -- Normal friends first
+  local numberOfFriends = C_FriendList.GetNumFriends() -- Normal friends first
   if (numberOfFriends > 0) then
    for i = 1, numberOfFriends do
-    local nameT, _, _, _, connectedT, _, _ = C_FriendList.GetFriendInfo(i)
-    if (nameT ~= nil and connectedT) then
-	  self:Debug("Sending whisper to" .. nameT)
-	  self:SendCommMessage("friendxp", msg, "WHISPER", nameT)
-    end
+    local f = C_FriendList.GetFriendInfoByIndex(i)
+	if f then
+		if (f.name ~= nil and f.connected) then
+			self:Debug("Sending whisper to" .. f.name)
+			self:SendCommMessage("friendxp", msg, "WHISPER", f.name)
+		end
+	end
    end
   end
 	-- FIX ME Check if this friend stuff still works
   local BNFriends, _ = BNGetNumFriends() -- Then do RealID/BattleTag Friends, doesn't work with connected realms
   if (BNFriends > 0) then
    for i = 1, BNFriends do
-    local presenceID, presenceName, battleTag, isBattleTagPresence, toonName, toonID, client, isOnline, _, _, _, _, _, isRIDFriend, _, _  = BNGetFriendInfo(i)
+    local bnetAccountID, accountName, battleTag, isBattleTagPresence, characterName, bnetIDGameAccount, client, isOnline, lastOnline, isAFK, isDND, messageText, noteText, isRIDFriend, messageTime, canSoR, isReferAFriend, canSummonFriend  = BNGetFriendInfo(i)
 	for gameAccountIndex = 1, BNGetNumFriendGameAccounts(i) do
-     self:Debug("Processing BattleNet: " .. presenceName)
-	 if (isOnline and toonName) then
-	  local _, _, client, realmName, _, _, _, _, _, _, _ = BNGetFriendGameAccountInfo(i, gameAccountIndex)
-	  if (client == BNET_CLIENT_WOW and realmName == GetRealmName() and CanCooperateWithGameAccount(toonID)) then
+     self:Debug("Processing BattleNet: " .. battleTag)
+	 if (isOnline and characterName) then
+	  local hasFocus, characterName, client, realmName, realmID, faction, race, class, guild, zoneName, level, gameText, broadcastText, broadcastTime, canSoR, toonID, bnetIDAccount, isGameAFK, isGameBusy = BNGetFriendGameAccountInfo(i, gameAccountIndex)
+	  if (client == BNET_CLIENT_WOW and CanCooperateWithGameAccount(toonID)) then
 	   self:Debug("Sent")
-	   self:SendCommMessage("friendxp", msg, "WHISPER", toonName)
+	   self:SendCommMessage("friendxp", msg, "WHISPER", characterName .. '-' .. realmName)
 	  end
 	 end
 	end
